@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 import time
 from selenium import webdriver as wd
 from selenium.webdriver.common.by import By
@@ -56,25 +57,20 @@ def scrape_followers(driver: wd.Chrome, account: str) -> list:
 
 def scrape_following(driver: wd.Chrome, account: str) -> list:
 
-    # Click the 'Following' link
     driver.find_element_by_partial_link_text("following").click()
 
-    # Wait for the following modal to load
     xpath = "/html/body/div[3]/div/div[2]/div"
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
 
-    SCROLL_PAUSE = 1  # Pause to allow loading of content
+    SCROLL_PAUSE = 1
 
     modalbox = "followingbox"
     scroll_class = "j6cq2"
     scroll_modal(driver, SCROLL_PAUSE, modalbox, scroll_class)
 
-    # Finally, scrape the following
     xpath = "/html/body/div[3]/div/div[2]/div/div[2]/ul/div/li"
+    following = extract_elements(driver, xpath)
 
-    following = extract_elements(driver,xpath)
-
-    # exit the modal
     driver.find_element_by_class_name("ckWGn").click()
 
     return following
@@ -95,10 +91,9 @@ def scrape_bio(driver: wd.Chrome) -> tuple:
 
 def scrape_posts_links(driver: wd.Chrome) -> list:
 
-    SCROLL_PAUSE = 1  # Pause to allow loading of content
+    SCROLL_PAUSE = 2  # Pause to allow loading of content
     all_posts_hash = []
 
-    # Get scroll height
     last_height = driver.execute_script("return document.body.scrollHeight")
 
     while True:
@@ -121,24 +116,25 @@ def scrape_posts_links(driver: wd.Chrome) -> list:
         last_height = new_height
 
     print(f"Number of gathered post links {len(all_posts_hash)}")
-    print(all_posts_hash)
 
     return all_posts_hash
 
 
-def scrape_post(driver: wd.Chrome, account: str, post_hash: str):
+def scrape_post(driver: wd.Chrome, account: str, post_hash: str) -> tuple:
 
     post_url = f"https://www.instagram.com/p/{post_hash}/?taken-by={account}"
-    post_url = "https://www.instagram.com/p/BmWY2Tdnj8V/?taken-by=neza.zeleznik"
+    post_url = "https://www.instagram.com/p/Bda3Q0yhOIS/?taken-by=nakljucni_mimojdoci"  # For testing
 
     # load the page with post
     driver.get(post_url)
 
-    scrape_post_likes(driver)
-    scrape_post_comments(driver)
+    likes = scrape_post_likes(driver)
+    comments = scrape_post_comments(driver)
+
+    return likes, comments
 
 
-def scrape_post_likes(driver: wd.Chrome):
+def scrape_post_likes(driver: wd.Chrome) -> list:
 
     driver.find_element_by_partial_link_text("likes").click()
     xpath = "/html/body/div[3]/div/div[2]/div"  # xpath for likes modal
@@ -150,20 +146,8 @@ def scrape_post_likes(driver: wd.Chrome):
     scroll_class = "wwxN2 GD3H5 "
     scroll_modal(driver, SCROLL_PAUSE, modalbox, scroll_class)
 
-
     xpath = "/html/body/div[3]/div/div[2]/div/div/div[2]/ul/div/li"
-    likes_elements = driver.find_elements_by_xpath(xpath)
-
-    likes_temp = [e.text for e in likes_elements]
-
-    likes = []
-
-    for i in likes_temp:
-        username, sep, name = i.partition('\n')
-        likes.append(username)
-
-    print(likes)
-    print(f"Number of likes {len(likes)}")
+    likes = extract_elements(driver, xpath)
 
     # Close the modal
     driver.find_element_by_class_name("Gzt1P").click()
@@ -171,9 +155,10 @@ def scrape_post_likes(driver: wd.Chrome):
     return likes
 
 
-def scrape_post_comments(driver: wd.Chrome):
+def scrape_post_comments(driver: wd.Chrome) -> zip:
 
     SCROLL_PAUSE = 1
+
     modalbox = "postcommentsbox"
     scroll_class = "KlCQn EtaWk"
     scroll_modal(driver, SCROLL_PAUSE, modalbox, scroll_class)
@@ -189,6 +174,8 @@ def scrape_post_comments(driver: wd.Chrome):
 
     for usr, cmt in user_w_comment:
         print(f"User :{usr} has said: {cmt}")
+
+    return user_w_comment
 
 
 def extract_elements(driver: wd.Chrome, xpath: str) -> list:
@@ -240,21 +227,11 @@ if __name__ == "__main__":
 
     try:
         login(driver, "", "")  # login to you instagram account
-
-
         # scrape_post(driver, account, "sgsgg")
-
         load_account(driver, account)
-        # namebio = scrape_bio(driver)
-        # followers = scrape_followers(driver, account)
-        # following = scrape_following(driver, account)
 
-        # print(f"Bio: {namebio}")
-        # print(f"Followers {followers}")
-        # print(f"Following {following}")
-
-        # scrape_bio(driver, account)
-        posts = scrape_posts_links(driver)
+        post_info = scrape_post(driver, "etst", "ssdgs")
+        print(post_info)
 
     finally:
         driver.quit()
