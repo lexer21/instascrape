@@ -11,7 +11,7 @@ class InstagramAccount:
 
     def __init__(self, driver: wd.Chrome, account: str):
 
-        self.account = account
+        self.account_name = account
         self.driver = driver
 
         self.followers = []
@@ -27,7 +27,7 @@ class InstagramAccount:
     def load_account(self):
 
         # Load account page
-        account_url = f"https://www.instagram.com/{self.account}/"
+        account_url = f"https://www.instagram.com/{self.account_name}/"
         print(account_url)
         self.driver.get(account_url)
 
@@ -106,14 +106,14 @@ class InstagramAccount:
 
         self.post_hash = all_posts_hash
 
-    def scrape_all_post(self):
+    def scrape_all_posts(self):
 
         for hash in self.post_hash:
             self.scrape_post(hash)
 
     def scrape_post(self, post_hash: str):
 
-        post_url = f"https://www.instagram.com/p/{post_hash}/?taken-by={self.account}"
+        post_url = f"https://www.instagram.com/p/{post_hash}/?taken-by={self.account_name}"
         # post_url = "https://www.instagram.com/p/Bda3Q0yhOIS/?taken-by=nakljucni_mimojdoci"  # For testing
 
         self.driver.get(post_url)
@@ -121,9 +121,11 @@ class InstagramAccount:
         likes = self.scrape_post_likes()
         comments = self.scrape_post_comments()
 
+        # print(comments)
+
         self.posts.append([post_hash, likes, comments])
 
-        print(self.posts)
+        # print(self.posts)
 
     def scrape_post_likes(self) -> list:
 
@@ -145,7 +147,7 @@ class InstagramAccount:
 
         return likes
 
-    def scrape_post_comments(self) -> zip:
+    def scrape_post_comments(self) -> list:
 
         SCROLL_PAUSE = 1
 
@@ -160,12 +162,20 @@ class InstagramAccount:
         users = [element.find_element_by_tag_name("a").text for element in comments]
         comments = [element.find_element_by_tag_name("span").text.encode("utf-8") for element in comments]
 
-        user_w_comment = zip(users, comments)
-
-        for usr, cmt in user_w_comment:
-            print(f"User :{usr} has said: {cmt}")
+        user_w_comment = list(map(list, zip(users, comments)))
+        # for usr, cmt in user_w_comment:
+        #     print(f"User :{usr} has said: {cmt}")
 
         return user_w_comment
+
+    def extract_all(self):
+
+        self.load_account()
+        self.scrape_followers()
+        self.scrape_following()
+        self.scrape_bio()
+        self.scrape_post_links()
+        self.scrape_all_posts()
 
     def extract_elements(self, xpath: str) -> list:
 
@@ -182,21 +192,25 @@ class InstagramAccount:
 
     def scroll_modal(self, modalbox: str, scroll_class: str):
 
-        self.driver.execute_script(f"{modalbox} = document.getElementsByClassName('{scroll_class}')[0];")
-        last_height = self.driver.execute_script(f"return {modalbox}.scrollHeight;")
 
-        # We need to scroll the modal to ensure that all elements are loaded
-        while True:
+        try:
+            self.driver.execute_script(f"{modalbox} = document.getElementsByClassName('{scroll_class}')[0];")
+            last_height = self.driver.execute_script(f"return {modalbox}.scrollHeight;")
 
-            self.driver.execute_script(f"{modalbox}.scrollTo(0, {modalbox}.scrollHeight);")
+            # We need to scroll the modal to ensure that all elements are loaded
+            while True:
 
-            # Wait for page to load
-            time.sleep(self.SCROLL_PAUSE)
+                self.driver.execute_script(f"{modalbox}.scrollTo(0, {modalbox}.scrollHeight);")
 
-            # Calculate new scrollHeight and compare with the previous
-            new_height = self.driver.execute_script(f"return {modalbox}.scrollHeight;")
+                # Wait for page to load
+                time.sleep(self.SCROLL_PAUSE)
 
-            if new_height == last_height:
-                break
+                # Calculate new scrollHeight and compare with the previous
+                new_height = self.driver.execute_script(f"return {modalbox}.scrollHeight;")
 
-            last_height = new_height
+                if new_height == last_height:
+                    break
+
+                last_height = new_height
+        except Exception as e:
+            print(f"Generated an exception : {e}")
