@@ -1,10 +1,9 @@
 from py2neo import Graph
 from py2neo import Node, Relationship, NodeMatcher
-from instagram_scraper_class import InstagramAccount
+from instagram_scraper import InstagramAccount
 
-from py2neo import Database
 
-class MakeNetwork():
+class MakeNetwork:
 
     def __init__(self, account: InstagramAccount):
 
