@@ -4,7 +4,7 @@ from instagram_scraper import InstagramAccount
 from export_to_neo4j import MakeNetwork
 from instagram_img_scraper import InstagramImage
 
-test_driver1 = InstagramDriver(username="nakljucni_mimojdoci", password="ektimo.4455")
+test_driver1 = InstagramDriver(username="", password="")
 
 account2 = InstagramAccount(driver=test_driver1.driver, account="sarraperic")
 account2.extract_all()
