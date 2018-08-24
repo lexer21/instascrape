@@ -5,6 +5,7 @@ from selenium import webdriver as wd
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import re
 
 
 class InstagramAccount:
@@ -108,8 +109,14 @@ class InstagramAccount:
 
     def scrape_all_posts(self):
 
+        temp = 0
         for hash in self.post_hash:
+
+            temp += 1
             self.scrape_post(hash)
+
+            if temp == 5:
+                break
 
     def scrape_post(self, post_hash: str):
 
@@ -121,9 +128,13 @@ class InstagramAccount:
         likes = self.scrape_post_likes()
         comments = self.scrape_post_comments()
 
+        #extract hashtags over all comments
+
+        hashtags = self.extract_hashtags(comments)
+        tags = self.extract_tags(comments)
         # print(comments)
 
-        self.posts.append([post_hash, likes, comments])
+        self.posts.append([post_hash, likes, comments, hashtags, tags])
 
         # print(self.posts)
 
@@ -168,10 +179,19 @@ class InstagramAccount:
 
         return user_w_comment
 
-    def extract_tag(self):
-        pass
+    def extract_tags(self, comments: str) -> list:
 
-        # TODO add a method which extracts tags from comments and adds it as a relationship in neo4j
+        tags = []
+
+        for comment in comments:
+
+            decode_cmt = comment[1].decode("utf-8")
+            tag_words = re.findall(r"\@\w+", decode_cmt)
+
+            for tag in tag_words:
+                tags.append(tag[1:])
+
+        return tags
 
     def extract_all(self):
 
@@ -181,6 +201,7 @@ class InstagramAccount:
         self.scrape_bio()
         self.scrape_post_links()
         self.scrape_all_posts()
+        self.driver.quit()
 
     def extract_elements(self, xpath: str) -> list:
 
@@ -194,6 +215,19 @@ class InstagramAccount:
             elements_list.append(username)
 
         return elements_list
+
+    def extract_hashtags(self, comments: list) -> list:
+
+        hashtags = []
+        for comment in comments:
+
+            decode_cmt = comment[1].decode("utf-8")
+            cmts_words = re.findall(r"\#\w+", decode_cmt)
+
+            for cmt in cmts_words:
+                hashtags.append(cmt)
+
+        return hashtags
 
     def scroll_modal(self, modalbox: str, scroll_class: str):
 

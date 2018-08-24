@@ -26,11 +26,10 @@ class InstagramImage(InstagramAccount):
 
         comments = self.scrape_post_comments()
 
-        # TODO finish implemeting hashtags extraction
         hashtags = self.extract_hashtags(comments)
 
-        # self.write_hashtags(hashtags)
-        # extract the comments
+        if hashtags:
+            self.write_hashtags(hashtags, post_hash)
 
     def scrape_all_images(self):
 
@@ -38,9 +37,9 @@ class InstagramImage(InstagramAccount):
             self.scrape_post(hash)
 
     def extract_all(self):
+
         try:
             os.mkdir(self.account_name)
-
         except Exception as e:
             print(e)
 
@@ -54,17 +53,22 @@ class InstagramImage(InstagramAccount):
         f.write(request.urlopen(image_url).read())
         f.close()
 
-    def extract_hashtags(self, comments:list) -> list:
+    # def extract_hashtags(self, comments:list) -> list:
+    #
+    #     hashtags = []
+    #     for comment in  comments:
+    #
+    #         decode_cmt = comment[1].decode("utf-8")
+    #         cmts_words = re.findall(r"\#\w+", decode_cmt)
+    #
+    #         for cmt in cmts_words:
+    #             hashtags.append(cmt)
+    #
+    #     return hashtags
 
-        hashtags = []
-        for comment in  comments:
-            print(comment[1].decode("utf-8"))
-            # m = re.search("([#])\w+", comment[1].decode("utf-8"))
-            # print(m.group(0))
-            #
-
-        return hashtags
     def write_hashtags(self, hashtags: list, post_hash: str):
-        pass
 
+        with open(f"{self.account_name}/{post_hash}.txt", "w") as f:
 
+            for hashtag in hashtags:
+                f.write(f"{hashtag}\n")

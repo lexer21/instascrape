@@ -30,7 +30,14 @@ class MakeNetwork:
             self.graph.create(following_relationship)
 
         for post in self.account.posts:
-            post_node = Node("post", post_hash=post[0])
+
+            # post[0] -> post_hash
+            # post[1] -> post_likes
+            # post[2] -> post_comments
+            # post[3] -> post_hashtags
+            # post[4] -> post_tags
+
+            post_node = Node("post", post_hash=post[0], post_hashtags=post[3])
 
             owner_relation = Relationship(self.root_node, "owner", post_node)
             self.graph.create(owner_relation)
@@ -44,7 +51,7 @@ class MakeNetwork:
                     like_user = Node("account", username=like, alias_name=like)
                     like_relation = Relationship(like_user, "likes", post_node)
                 else:
-                    like_relation = Relationship(m, "like", post_node)
+                    like_relation = Relationship(m, "likes", post_node)
 
                 self.graph.create(like_relation)
 
@@ -60,3 +67,17 @@ class MakeNetwork:
                     comment_relation = Relationship(m, "comment", post_node, usr_message=str(comment[1]))
 
                 self.graph.create(comment_relation)
+
+            for tag in post[4]:
+
+                matcher = NodeMatcher(self.graph)
+                m = matcher.match("account", username=tag).first()
+
+                if not m:
+                    tagged_user = Node("account", username=tag, alias_name=tag)
+                    tag_relation = Relationship(post_node, "taged", tagged_user)
+                else:
+
+                    tag_relation = Relationship(post_node, "taged", m)
+
+                self.graph.create(tag_relation)
