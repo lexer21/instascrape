@@ -38,7 +38,8 @@ class InstagramAccount:
         self.driver.find_element_by_partial_link_text("follower").click()
 
         # Wait for the followers modal to load
-        xpath = "/html/body/div[3]/div/div[2]/div"
+        # xpath = "/html/body/div[3]/div/div[2]/div"
+        xpath = "/html/body/div[3]/div/div"
         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
 
         SCROLL_PAUSE = 1  # Pause to allow loading of content
@@ -46,18 +47,21 @@ class InstagramAccount:
         modalbox = "followersbox"
         scroll_class = "j6cq2"
         self.scroll_modal(modalbox, scroll_class)
-
-        xpath = "/html/body/div[3]/div/div[2]/div/div[2]/ul/div/li"  # xpath for follower elements
+        # "/html/body/div[3]/div/div/div[2]/ul/div/li"
+        # xpath = "/html/body/div[3]/div/div[2]/div/div[2]/ul/div/li"  # xpath for follower elements
+        xpath = "/html/body/div[3]/div/div/div[2]/ul/div/li"
         self.followers = self.extract_elements(xpath)  # extract followers usernames
-
         # exit the modal
-        self.driver.find_element_by_class_name("ckWGn").click()
+        # self.driver.find_element_by_class_name(".oF4XW.dCJp8").click()
+        # self.driver.find_element(By.CSS_SELECTOR(".oF4XW.dCJp8")).click()
+        self.driver.find_element_by_xpath("/html/body/div[3]/div/div/div[1]/div[2]/button").click()
+        # self.driver.find_element_by_css_selector(".oF4XW.dCJp8").click()
 
     def scrape_following(self):
 
         self.driver.find_element_by_partial_link_text("following").click()
-
-        xpath = "/html/body/div[3]/div/div[2]/div"
+        xpath = "/html/body/div[3]/div/div"
+        # xpath = "/html/body/div[3]/div/div[2]/div"
         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
 
         self.SCROLL_PAUSE = 1
@@ -66,10 +70,13 @@ class InstagramAccount:
         scroll_class = "j6cq2"
         self.scroll_modal(modalbox, scroll_class)
 
-        xpath = "/html/body/div[3]/div/div[2]/div/div[2]/ul/div/li"
+        xpath = "/html/body/div[3]/div/div/div[2]/ul/div/li"
+
+        # xpath = "/html/body/div[3]/div/div[2]/div/div[2]/ul/div/li"
         self.following = self.extract_elements(xpath)
 
-        self.driver.find_element_by_class_name("ckWGn").click()
+        # self.driver.find_element_by_class_name("ckWGn").click()
+        self.driver.find_element_by_xpath("/html/body/div[3]/div/div/div[1]/div[2]/button").click()
 
     def scrape_bio(self):
 
@@ -109,14 +116,9 @@ class InstagramAccount:
 
     def scrape_all_posts(self):
 
-        temp = 0
         for hash in self.post_hash:
-
-            temp += 1
             self.scrape_post(hash)
 
-            if temp == 5:
-                break
 
     def scrape_post(self, post_hash: str):
 
@@ -213,6 +215,9 @@ class InstagramAccount:
         for i in elements_txt:
             username, sep, name = i.partition('\n')
             elements_list.append(username)
+
+
+        print(elements_list)
 
         return elements_list
 

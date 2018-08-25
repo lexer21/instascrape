@@ -1,7 +1,7 @@
 from instagram_scraper import InstagramAccount
 from urllib import request
 import os
-import re
+
 
 class InstagramImage(InstagramAccount):
 
@@ -19,7 +19,12 @@ class InstagramImage(InstagramAccount):
 
         self.driver.get(post_url)
 
-        image = self.driver.find_element_by_class_name("FFVAD")
+        try:
+            image = self.driver.find_element_by_class_name("FFVAD")
+        except Exception as e:
+            print(e)
+            return
+
         image_url = str(image.get_attribute("src"))
 
         self.download_image(post_hash, image_url)
@@ -33,13 +38,13 @@ class InstagramImage(InstagramAccount):
 
     def scrape_all_images(self):
 
-        for hash in self.post_hash:
-            self.scrape_post(hash)
+        for p_hash in self.post_hash:
+            self.scrape_post(p_hash)
 
     def extract_all(self):
 
         try:
-            os.mkdir(self.account_name)
+            os.mkdir(f"accounts/{self.account_name}")
         except Exception as e:
             print(e)
 
@@ -49,26 +54,13 @@ class InstagramImage(InstagramAccount):
 
     def download_image(self, post_hash: str, image_url: str):
 
-        f = open(f"{self.account_name}/{post_hash}.jpg", "wb")
+        f = open(f"accounts/{self.account_name}/{post_hash}.jpg", "wb")
         f.write(request.urlopen(image_url).read())
         f.close()
 
-    # def extract_hashtags(self, comments:list) -> list:
-    #
-    #     hashtags = []
-    #     for comment in  comments:
-    #
-    #         decode_cmt = comment[1].decode("utf-8")
-    #         cmts_words = re.findall(r"\#\w+", decode_cmt)
-    #
-    #         for cmt in cmts_words:
-    #             hashtags.append(cmt)
-    #
-    #     return hashtags
-
     def write_hashtags(self, hashtags: list, post_hash: str):
 
-        with open(f"{self.account_name}/{post_hash}.txt", "w") as f:
+        with open(f"accounts/{self.account_name}/{post_hash}.txt", "w") as f:
 
             for hashtag in hashtags:
                 f.write(f"{hashtag}\n")
