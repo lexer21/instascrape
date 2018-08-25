@@ -51,6 +51,7 @@ class InstagramImage(InstagramAccount):
         self.load_account()
         self.scrape_post_links()
         self.scrape_all_images()
+        self.driver.quit()
 
     def download_image(self, post_hash: str, image_url: str):
 

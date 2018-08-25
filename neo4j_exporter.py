@@ -1,5 +1,4 @@
-from py2neo import Graph
-from py2neo import Node, Relationship, NodeMatcher
+from py2neo import Node, Relationship, NodeMatcher, Graph
 from instagram_scraper import InstagramAccount
 
 
@@ -11,6 +10,8 @@ class MakeNetwork:
 
         self.account = account
 
+        # TODO add bio and other info about account, but make sure doesnt create conflicts when making relationshis
+        # also check if exists
         self.root_node = Node("account", username=self.account.account_name, alias_name=self.account.account_name)
 
     def delete_graph(self):
