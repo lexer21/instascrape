@@ -2,9 +2,10 @@ from selenium import webdriver as wd
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from time import sleep
 
 
-class InstagramDriver():
+class InstagramDriver:
 
     chrome_dir = r"/usr/bin/google-chrome"
     chrome_driver_dir = r"/home/leon/Projects/instascrape/chromedriver"
@@ -24,6 +25,8 @@ class InstagramDriver():
 
         # Load page
         self.driver.get("https://www.instagram.com/accounts/login/")
+
+        sleep(2)
 
         # Login
         self.driver.find_element_by_xpath("//div/input[@name='username']").send_keys(self.username)

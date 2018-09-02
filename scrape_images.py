@@ -1,22 +1,22 @@
-from instagram_driver import InstagramDriver
-from instagram_scraper import InstagramAccount
-from neo4j_exporter import MakeNetwork
-from instagram_img_scraper import InstagramImage
+from drivers.instagram_driver import InstagramDriver
+from scrapers.instagram_img_scraper import InstagramImage
 import concurrent.futures
 import os
 
-users = ["nakljucni_mimojdoci", "jfs3d", "laurajuvancic", "recyclableart", "mable3d", "vupalmo"]
+
+users = ["sarraperic"]
 
 # autorization not necessary
 
-
 def scrape(account: str):
-    temp_driver = InstagramDriver(username="", password="")
+    temp_driver = InstagramDriver(username="nakljucni_mimojdoci", password="ektimo.4455")
     temp_account = InstagramImage(driver=temp_driver.driver, account=account)
     temp_account.extract_all()
 
-
-os.mkdir("accounts")
+try:
+    os.mkdir("accounts")
+except:
+    pass
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
 

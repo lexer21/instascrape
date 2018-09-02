@@ -1,7 +1,8 @@
-from instagram_scraper import InstagramAccount
+from scrapers.instagram_scraper import InstagramAccount
 from urllib import request
 import os
 
+# TODO option to also download videos
 
 class InstagramImage(InstagramAccount):
 
@@ -10,24 +11,24 @@ class InstagramImage(InstagramAccount):
 
     def scrape_post(self, post_hash: str):
 
-        """
-        Here we scrape comments and extract the hashtags and download the images
-        :param post_hash:
-        :return:
-        """
         post_url = f"https://www.instagram.com/p/{post_hash}/?taken-by={self.account_name}"
 
         self.driver.get(post_url)
 
         try:
-            image = self.driver.find_element_by_class_name("FFVAD")
+            images = self.driver.find_elements_by_class_name("FFVAD")
         except Exception as e:
             print(e)
             return
 
-        image_url = str(image.get_attribute("src"))
+        images_url = []
+        for src_attr in images:
+            print(str(src_attr.get_attribute("src")))
 
-        self.download_image(post_hash, image_url)
+            images_url.append(str(src_attr.get_attribute("src")))
+
+        for i, url in enumerate(images_url):
+            self.download_image(post_hash, url, i)
 
         comments = self.scrape_post_comments()
 
@@ -53,9 +54,9 @@ class InstagramImage(InstagramAccount):
         self.scrape_all_images()
         self.driver.quit()
 
-    def download_image(self, post_hash: str, image_url: str):
+    def download_image(self, post_hash: str, image_url: str, img_num: int):
 
-        f = open(f"accounts/{self.account_name}/{post_hash}.jpg", "wb")
+        f = open(f"accounts/{self.account_name}/{post_hash}_{img_num}.jpg", "wb")
         f.write(request.urlopen(image_url).read())
         f.close()
 
