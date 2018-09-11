@@ -11,7 +11,7 @@ import time
 
 # TODO add better exception handling
 # TODO some problems with tags
-
+# TODO add better system for scraping all likes, try again, add que
 # TODO add maximum amount for post, likes, comments, ...
 
 class InstagramAccount:
@@ -295,7 +295,7 @@ class InstagramAccount:
 
                 # Wait for page to load
                 time.sleep(self.SCROLL_PAUSE + delta_time)
-                print(f"Time for sleep: {self.SCROLL_PAUSE + delta_time}")
+                # print(f"Time for sleep: {self.SCROLL_PAUSE + delta_time}")
 
                 nums2 = len(self.driver.find_elements_by_xpath(xpath))
                 print(f"{nums1} -- {nums2} // {num_elements}")
@@ -304,14 +304,14 @@ class InstagramAccount:
                     non_increase += 1
 
                 if nums2 == num_elements:
-                    print("We are at the end")
+                    # print("We are at the end")
                     break
 
                 elif nums1 == nums2:
                     print("Need more time to load elements!")
-                    delta_time += 0.05
+                    delta_time += 0.1
 
-                    if non_increase > 5:
+                    if non_increase > 10:
                         break
 
                     relative_dif = num_elements - nums2

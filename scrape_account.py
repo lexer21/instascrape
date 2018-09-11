@@ -8,11 +8,11 @@ from exporters.json_exporter import MakeJson
 # graph = Graph(user="neo4j", password="test1")
 # graph.delete_all()
 
-users = ["ziganagelj"]
+users = ["mijaumer", "sarabiondic", "pozarkim", "soraya.b__", "aganovicnensi", "masamihalic","poberajeva", "bitchfacenatalie"]
 
 # scrape
 temp_driver = InstagramDriver(username="", password="")
-temp_account = InstagramAccount(driver=temp_driver.driver, account="sarraperic")
+temp_account = InstagramAccount(driver=temp_driver.driver, account="sarabiondic")
 
 temp_account.extract_all()
 

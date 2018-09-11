@@ -9,7 +9,7 @@ users = ["sarraperic"]
 # autorization not necessary
 
 def scrape(account: str):
-    temp_driver = InstagramDriver(username="nakljucni_mimojdoci", password="ektimo.4455")
+    temp_driver = InstagramDriver(username="", password="")
     temp_account = InstagramImage(driver=temp_driver.driver, account=account)
     temp_account.extract_all()
 
