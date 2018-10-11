@@ -14,8 +14,7 @@ users = ["mijaumer", "sarabiondic", "pozarkim", "soraya.b__", "aganovicnensi", "
 
 # scrape
 temp_driver = InstagramDriver(username="xov71474", password="kolo1234")
-temp_account = InstagramAccount(driver=temp_driver.driver, account="anja.jaklin")
-
+temp_account = InstagramAccount(driver=temp_driver.driver, account="elisa.bianc")
 temp_account.extract_all()
 
 if not temp_account.account_private:

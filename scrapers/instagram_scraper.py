@@ -62,13 +62,43 @@ class InstagramAccount:
 
         self.check_if_private()
 
-    def scrape_follow(self):
-        pass
+    def scrape_follow(self, click_link: str, modalbox: str, str_index: int):
+
+        class_name = "g47SY"
+        xpath = "/html/body/div[3]/div/div"
+        scroll_class = "isgrP"
+        scroll_xpath = "/html/body/div[3]/div/div/div[2]/ul/div/li"
+
+        follow = self.driver.find_elements_by_class_name(class_name)[str_index].text
+
+        num_followers = self.extract_number(follow)
+
+        # Click the 'Follower(s)' link
+        self.driver.find_element_by_partial_link_text(click_link).click()
+
+        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
+
+        print("Collecting user elements")
+        self.scroll_modal(modalbox, scroll_class, num_followers, scroll_xpath)
+
+        print("Extracting usernames")
+        if click_link == "follower":
+            self.followers = self.extract_elements(scroll_xpath)
+        elif click_link == "following":
+            self.following = self.extract_elements(scroll_xpath)
+
+        # exit the modal
+        self.driver.find_element_by_xpath("/html/body/div[3]/div/div/div[1]/div[2]/button").click()
+
+    @staticmethod
+    def extract_number(followers: str) -> int:
+        # TODO implement less error prone conversion
+        return int(followers.replace(",", ""))
 
     def scrape_followers(self):
 
         # Get number of followers
-        num_followers = int(self.driver.find_elements_by_class_name("g47SY")[1].text.replace(",",""))
+        num_followers = int(self.driver.find_elements_by_class_name("g47SY")[1].text.replace(",", ""))
         print(f"Number of folowers: {num_followers}")
 
         # Click the 'Follower(s)' link
@@ -96,7 +126,7 @@ class InstagramAccount:
 
         # get number of following
         # TODO Universal number converter
-        num_following = int(self.driver.find_elements_by_class_name("g47SY")[2].text.replace(",",""))
+        num_following = int(self.driver.find_elements_by_class_name("g47SY")[2].text.replace(",", ""))
         print(f"Number of folowers: {num_following}")
 
         self.driver.find_element_by_partial_link_text("following").click()
@@ -260,15 +290,17 @@ class InstagramAccount:
         self.load_account()
 
         if not self.account_private:
-            self.scrape_followers()
-            self.scrape_following()
+            self.scrape_follow(click_link="follower", modalbox="followersbox", str_index=1)
+            # self.scrape_followers()
+
+            self.scrape_follow(click_link="following", modalbox="followingbox", str_index=2)
+            # self.scrape_following()
             self.scrape_bio()
             self.scrape_post_links()
             self.scrape_all_posts()
 
         # self.scrape_post()  # za testirat
         self.driver.quit()
-
 
     # TODO reshape to static method
     def extract_elements(self, xpath: str) -> list:
@@ -306,7 +338,6 @@ class InstagramAccount:
             self.driver.execute_script(f"{modalbox} = document.getElementsByClassName('{scroll_class}')[0];")
             last_height = self.driver.execute_script(f"return {modalbox}.scrollHeight;")
             delta_time = 0
-
 
             # We need to scroll the modal to ensure that all elements are loaded
 
