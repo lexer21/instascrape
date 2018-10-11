@@ -3,6 +3,8 @@ from scrapers.instagram_scraper import InstagramAccount
 from exporters.json_exporter import MakeJson
 
 # TODO add command line interface (CLI)
+# TODO add some configuration file for the scraper
+
 
 # Clean previous graph
 # graph = Graph(user="neo4j", password="test1")
@@ -11,8 +13,8 @@ from exporters.json_exporter import MakeJson
 users = ["mijaumer", "sarabiondic", "pozarkim", "soraya.b__", "aganovicnensi", "masamihalic","poberajeva", "bitchfacenatalie"]
 
 # scrape
-temp_driver = InstagramDriver(username="", password="")
-temp_account = InstagramAccount(driver=temp_driver.driver, account="sarabiondic")
+temp_driver = InstagramDriver(username="xov71474", password="kolo1234")
+temp_account = InstagramAccount(driver=temp_driver.driver, account="anja.jaklin")
 
 temp_account.extract_all()
 

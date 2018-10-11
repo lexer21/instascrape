@@ -7,12 +7,30 @@ from selenium.webdriver.support import expected_conditions as EC
 import re
 import random
 import time
-
+import configparser
 
 # TODO add better exception handling
 # TODO some problems with tags
 # TODO add better system for scraping all likes, try again, add que
 # TODO add maximum amount for post, likes, comments, ...
+# TODO joing followers and following scrapers
+# TODO implement some concurent and ques, because extracting takes a long time
+
+# LOADING CONFIGURATION PARAMETERS
+
+config = configparser.ConfigParser()
+config.read("scrapers/scraper_config.ini")
+
+# Maybe move to another file
+
+MAX_SCROLL_RETRY = int(config["scraper"]["MAX_SCROLL_RETRY"])
+SCROLL_PAUSE = None
+SCROLL_PAUSE_LINK = None
+MAX_SCROLL_ELEMENTS = int(config["scraper"]["MAX_SCROLL_ELEMENTS"])
+
+
+# END OF CONFIGURATION
+
 
 class InstagramAccount:
 
@@ -36,19 +54,21 @@ class InstagramAccount:
 
     def load_account(self):
 
-        # Load account page
         account_url = f"https://www.instagram.com/{self.account_name}/"
-
         print(account_url)
+
+        # Load account page
         self.driver.get(account_url)
 
         self.check_if_private()
 
+    def scrape_follow(self):
+        pass
 
     def scrape_followers(self):
 
         # Get number of followers
-        num_followers = int(self.driver.find_elements_by_class_name("g47SY")[1].text)
+        num_followers = int(self.driver.find_elements_by_class_name("g47SY")[1].text.replace(",",""))
         print(f"Number of folowers: {num_followers}")
 
         # Click the 'Follower(s)' link
@@ -59,7 +79,8 @@ class InstagramAccount:
         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
 
         modalbox = "followersbox"
-        scroll_class = "j6cq2"
+        scroll_class = "isgrP"
+
         xpath = "/html/body/div[3]/div/div/div[2]/ul/div/li"
 
         print("Collecting user elements")
@@ -74,7 +95,8 @@ class InstagramAccount:
     def scrape_following(self):
 
         # get number of following
-        num_following = int(self.driver.find_elements_by_class_name("g47SY")[2].text)
+        # TODO Universal number converter
+        num_following = int(self.driver.find_elements_by_class_name("g47SY")[2].text.replace(",",""))
         print(f"Number of folowers: {num_following}")
 
         self.driver.find_element_by_partial_link_text("following").click()
@@ -82,7 +104,7 @@ class InstagramAccount:
         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
 
         modalbox = "followingbox"
-        scroll_class = "j6cq2"
+        scroll_class = "isgrP"
 
         xpath = "/html/body/div[3]/div/div/div[2]/ul/div/li"
         self.scroll_modal(modalbox, scroll_class, num_following, xpath)
@@ -120,6 +142,7 @@ class InstagramAccount:
             time.sleep(self.SCROLL_PAUSE_LINK + random.random())
 
             new_height = self.driver.execute_script("return document.body.scrollHeight")
+
             if new_height == last_height:
                 break
 
@@ -135,7 +158,7 @@ class InstagramAccount:
             print(f"Scraping post :: {i}")
             self.scrape_post(hash)
 
-    def scrape_post(self, post_hash: str = "sgsdggsg"):
+    def scrape_post(self, post_hash: str):
 
         post_url = f"https://www.instagram.com/p/{post_hash}/?taken-by={self.account_name}"
 
@@ -201,6 +224,7 @@ class InstagramAccount:
                 break
 
         xpath = "//*[@id='react-root']/section/main/div/div/article/div[2]/div[1]/ul/li"
+
         comments = self.driver.find_elements_by_xpath(xpath)
         users = [element.find_element_by_tag_name("a").text for element in comments]
         comments = [element.find_element_by_tag_name("span").text for element in comments]
@@ -236,7 +260,6 @@ class InstagramAccount:
         self.load_account()
 
         if not self.account_private:
-
             self.scrape_followers()
             self.scrape_following()
             self.scrape_bio()
@@ -246,8 +269,10 @@ class InstagramAccount:
         # self.scrape_post()  # za testirat
         self.driver.quit()
 
-    def extract_elements(self, xpath: str) -> list:
 
+    # TODO reshape to static method
+    def extract_elements(self, xpath: str) -> list:
+        print("Extracting elements")
         elements = self.driver.find_elements_by_xpath(xpath)
         elements_txt = [e.text for e in elements]  # List of followers (username, full name, follow text)
         elements_list = []  # List of followers (usernames only)
@@ -281,6 +306,8 @@ class InstagramAccount:
             self.driver.execute_script(f"{modalbox} = document.getElementsByClassName('{scroll_class}')[0];")
             last_height = self.driver.execute_script(f"return {modalbox}.scrollHeight;")
             delta_time = 0
+
+
             # We need to scroll the modal to ensure that all elements are loaded
 
             non_increase = 0
@@ -300,6 +327,9 @@ class InstagramAccount:
                 nums2 = len(self.driver.find_elements_by_xpath(xpath))
                 print(f"{nums1} -- {nums2} // {num_elements}")
 
+                if nums1 > MAX_SCROLL_ELEMENTS:
+                    break
+
                 if relative_dif == (num_elements - nums2):
                     non_increase += 1
 
@@ -311,7 +341,7 @@ class InstagramAccount:
                     print("Need more time to load elements!")
                     delta_time += 0.1
 
-                    if non_increase > 10:
+                    if non_increase > MAX_SCROLL_RETRY:
                         break
 
                     relative_dif = num_elements - nums2

@@ -30,7 +30,6 @@ class MakeJson:
         print(self.account.posts)
 
         user_data = {
-
             "username": self.account.account_name,
             "account_alias": self.account.account_alias,
             "account_bio": self.account.account_bio,
@@ -41,5 +40,5 @@ class MakeJson:
 
         pprint(user_data)
 
-        with open(f"json/{self.account.account_name}", 'w') as outfile:
+        with open(f"data/json/{self.account.account_name}", 'w') as outfile:
             json.dump(user_data, outfile, sort_keys=True, indent=4)

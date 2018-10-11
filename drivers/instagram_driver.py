@@ -1,9 +1,7 @@
 from selenium import webdriver as wd
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from time import sleep
 
+# TODO add configuration file
 
 class InstagramDriver:
 
@@ -31,9 +29,9 @@ class InstagramDriver:
         # Login
         self.driver.find_element_by_xpath("//div/input[@name='username']").send_keys(self.username)
         self.driver.find_element_by_xpath("//div/input[@name='password']").send_keys(self.password)
-        self.driver.find_element_by_xpath("//span/button").click()
-
+        login_btn = self.driver.find_element_by_xpath("//button[contains(text(),'Log in')]").click()
         # Wait for the login page to load
-        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.LINK_TEXT, "Watch All")))
+        # WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.LINK_TEXT, "Watch All")))
 
         print("Successfuly logged-in!")
+        sleep(2)

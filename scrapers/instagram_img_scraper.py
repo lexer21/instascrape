@@ -31,7 +31,6 @@ class InstagramImage(InstagramAccount):
             self.download_image(post_hash, url, i)
 
         comments = self.scrape_post_comments()
-
         hashtags = self.extract_hashtags(comments)
 
         if hashtags:
