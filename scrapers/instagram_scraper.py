@@ -9,11 +9,11 @@ import random
 import time
 import configparser
 
+# TODO poenoti pridobivanje podatkov iz html-ja, probaj naredit da bo čim manj vzdrževanja potrebno
 # TODO add better exception handling
 # TODO some problems with tags
 # TODO add better system for scraping all likes, try again, add que
 # TODO add maximum amount for post, likes, comments, ...
-# TODO joing followers and following scrapers
 # TODO implement some concurent and ques, because extracting takes a long time
 
 # LOADING CONFIGURATION PARAMETERS
@@ -62,7 +62,7 @@ class InstagramAccount:
 
         self.check_if_private()
 
-    def scrape_follow(self, click_link: str, modalbox: str, str_index: int):
+    def scrape_followers(self, click_link: str, modalbox: str, str_index: int):
 
         class_name = "g47SY"
         xpath = "/html/body/div[3]/div/div"
@@ -81,67 +81,18 @@ class InstagramAccount:
         print("Collecting user elements")
         self.scroll_modal(modalbox, scroll_class, num_followers, scroll_xpath)
 
-        print("Extracting usernames")
         if click_link == "follower":
-            self.followers = self.extract_elements(scroll_xpath)
+            self.followers = self.extract_elements(elements=self.driver.find_elements_by_xpath(xpath))
         elif click_link == "following":
-            self.following = self.extract_elements(scroll_xpath)
+            self.following = self.extract_elements(elements=self.driver.find_elements_by_xpath(xpath))
 
         # exit the modal
         self.driver.find_element_by_xpath("/html/body/div[3]/div/div/div[1]/div[2]/button").click()
 
     @staticmethod
     def extract_number(followers: str) -> int:
-        # TODO implement less error prone conversion
+        # TODO implement less error prone conversion, excepting also formatis in k, m..
         return int(followers.replace(",", ""))
-
-    def scrape_followers(self):
-
-        # Get number of followers
-        num_followers = int(self.driver.find_elements_by_class_name("g47SY")[1].text.replace(",", ""))
-        print(f"Number of folowers: {num_followers}")
-
-        # Click the 'Follower(s)' link
-        self.driver.find_element_by_partial_link_text("follower").click()
-
-        # Wait for the followers modal to load
-        xpath = "/html/body/div[3]/div/div"
-        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
-
-        modalbox = "followersbox"
-        scroll_class = "isgrP"
-
-        xpath = "/html/body/div[3]/div/div/div[2]/ul/div/li"
-
-        print("Collecting user elements")
-        self.scroll_modal(modalbox, scroll_class, num_followers, xpath)
-
-        print("Extracting usernames")
-        self.followers = self.extract_elements(xpath)  # extract followers usernames
-
-        # exit the modal
-        self.driver.find_element_by_xpath("/html/body/div[3]/div/div/div[1]/div[2]/button").click()
-
-    def scrape_following(self):
-
-        # get number of following
-        # TODO Universal number converter
-        num_following = int(self.driver.find_elements_by_class_name("g47SY")[2].text.replace(",", ""))
-        print(f"Number of folowers: {num_following}")
-
-        self.driver.find_element_by_partial_link_text("following").click()
-        xpath = "/html/body/div[3]/div/div"
-        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
-
-        modalbox = "followingbox"
-        scroll_class = "isgrP"
-
-        xpath = "/html/body/div[3]/div/div/div[2]/ul/div/li"
-        self.scroll_modal(modalbox, scroll_class, num_following, xpath)
-
-        self.following = self.extract_elements(xpath)
-
-        self.driver.find_element_by_xpath("/html/body/div[3]/div/div/div[1]/div[2]/button").click()
 
     def scrape_bio(self):
 
@@ -232,7 +183,7 @@ class InstagramAccount:
         self.scroll_modal(modalbox, scroll_class, num_elements=num_of_likes, xpath=xpath)
 
         time.sleep(.25)
-        likes = self.extract_elements(xpath)
+        likes = self.extract_elements(elements=self.driver.find_elements_by_xpath(xpath))
 
         # Close the modal
         self.driver.find_element_by_class_name("Gzt1P").click()
@@ -274,7 +225,6 @@ class InstagramAccount:
     def extract_tags(comments: list) -> list:
 
         tags = []
-
         for comment in comments:
 
             decode_cmt = comment[1]
@@ -285,15 +235,15 @@ class InstagramAccount:
 
         return tags
 
-    def extract_all(self):
+    def extract_all_information(self):
 
         self.load_account()
 
         if not self.account_private:
-            self.scrape_follow(click_link="follower", modalbox="followersbox", str_index=1)
+            self.scrape_followers(click_link="follower", modalbox="followersbox", str_index=1)
             # self.scrape_followers()
 
-            self.scrape_follow(click_link="following", modalbox="followingbox", str_index=2)
+            self.scrape_followers(click_link="following", modalbox="followingbox", str_index=2)
             # self.scrape_following()
             self.scrape_bio()
             self.scrape_post_links()
@@ -302,10 +252,11 @@ class InstagramAccount:
         # self.scrape_post()  # za testirat
         self.driver.quit()
 
-    # TODO reshape to static method
-    def extract_elements(self, xpath: str) -> list:
+    @staticmethod
+    def extract_elements(elements) -> list:
+
         print("Extracting elements")
-        elements = self.driver.find_elements_by_xpath(xpath)
+        # elements = self.driver.find_elements_by_xpath(xpath)
         elements_txt = [e.text for e in elements]  # List of followers (username, full name, follow text)
         elements_list = []  # List of followers (usernames only)
 
@@ -369,7 +320,7 @@ class InstagramAccount:
                     break
 
                 elif nums1 == nums2:
-                    print("Need more time to load elements!")
+                    print("Retrying to load more elements")
                     delta_time += 0.1
 
                     if non_increase > MAX_SCROLL_RETRY:

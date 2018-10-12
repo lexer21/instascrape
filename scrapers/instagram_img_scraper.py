@@ -41,7 +41,7 @@ class InstagramImage(InstagramAccount):
         for p_hash in self.post_hash:
             self.scrape_post(p_hash)
 
-    def extract_all(self):
+    def extract_all_information(self):
 
         try:
             os.mkdir(f"accounts/{self.account_name}")

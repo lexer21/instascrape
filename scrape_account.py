@@ -15,7 +15,7 @@ users = ["mijaumer", "sarabiondic", "pozarkim", "soraya.b__", "aganovicnensi", "
 # scrape
 temp_driver = InstagramDriver(username="xov71474", password="kolo1234")
 temp_account = InstagramAccount(driver=temp_driver.driver, account="elisa.bianc")
-temp_account.extract_all()
+temp_account.extract_all_information()
 
 if not temp_account.account_private:
     temp_json = MakeJson(temp_account)
@@ -34,7 +34,7 @@ if not temp_account.account_private:
 #     # scrape
 #     temp_driver = InstagramDriver(username="nakljucni_mimojdoci", password="ektimo.4455")
 #     temp_account = InstagramAccount(driver=temp_driver.driver, account=account)
-#     temp_account.extract_all()
+#     temp_account.extract_all_information()
 #
 #     # export to Neo4j
 #     temp_graph = MakeNetwork(temp_account)
