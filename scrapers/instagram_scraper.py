@@ -7,7 +7,6 @@ from selenium.webdriver.support import expected_conditions as EC
 import asyncio
 import threading
 
-
 import re
 import random
 import time
@@ -95,7 +94,7 @@ class InstagramAccount:
         print("Scrolling and collecting elements")
         # TODO sproti scrolanje in parsanje
 
-        self.scroll_modal(modalbox, scroll_class, num_followers, scroll_xpath, save_location=save_location)
+        self.scroll_modal(modalbox, scroll_class, num_followers, scroll_xpath, save_location)
 
         # exit the modal, but wait little bit before that
         time.sleep(1)
@@ -122,6 +121,7 @@ class InstagramAccount:
             post_links = [link.get_attribute("href").split("/p/")[1].split("/?")[0] for link in links
                           if "taken-by" in link.get_attribute("href")]
 
+            # We actuall extracted post hashes, which in turn give us the links
             all_posts_hash.extend(post_links)
             all_posts_hash = list(set(all_posts_hash))  # keep only unique values
 
@@ -164,36 +164,39 @@ class InstagramAccount:
 
         likes = self.scrape_post_likes()
         comments = self.scrape_post_comments()
-
         hashtags = self.extract_hashtags(comments)
         tags = self.extract_tags(comments)
 
         self.posts.append([post_hash, likes, comments, hashtags, tags])
 
+    # TODO rewrite this function to work with queues
     def scrape_post_likes(self) -> list:
 
+        class_name = "zV_Nj"
+        xpath = "/html/body/div[3]/div/div[2]/div"
+        scroll_class = "wwxN2 GD3H5 "
+        scroll_xpath = "/html/body/div[3]/div/div[2]/div/div/div[2]/ul/div/li"
+
         # Get number of likes
-        element = self.driver.find_element_by_class_name("zV_Nj")
+        element = self.driver.find_element_by_class_name(class_name)
 
         num_of_likes = int((element.find_element_by_tag_name("span").text.replace(",", "")))
 
         print(f"Number of likes is: {num_of_likes}")
 
         self.driver.find_element_by_partial_link_text("likes").click()
-        xpath = "/html/body/div[3]/div/div[2]/div"  # xpath for likes modal
         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
 
         modalbox = "postlikesbox"
-        scroll_class = "wwxN2 GD3H5 "
-        xpath = "/html/body/div[3]/div/div[2]/div/div/div[2]/ul/div/li"
-
-        self.scroll_modal(modalbox, scroll_class, max_num_elements=num_of_likes, xpath=xpath)
+        likes = []
+        self.scroll_modal(modalbox, scroll_class, num_of_likes, scroll_xpath, likes)
 
         time.sleep(.25)
-        likes = self.extract_elements(elements=self.driver.find_elements_by_xpath(xpath))
 
         # Close the modal
         self.driver.find_element_by_class_name("Gzt1P").click()
+
+        print(f"Gathered likes are {likes}")
 
         return likes
 
@@ -249,37 +252,20 @@ class InstagramAccount:
         if not self.account_private:
             self.scrape_followers(click_link="follower", modalbox="followersbox", str_index=1,
                                   save_location=self.followers)
-            # self.scrape_followers()
 
             self.scrape_followers(click_link="following", modalbox="followingbox", str_index=2,
                                   save_location=self.following)
-            # self.scrape_following()
-            # self.scrape_bio()
-            # self.scrape_post_links()
-            # self.scrape_all_posts()
+            self.scrape_bio()
+            self.scrape_post_links()
+            self.scrape_all_posts()
 
+
+            # TODO queue does not exit somehow??
             process_queue.join()
 
         # self.scrape_post()  # za testirat
 
         self.driver.quit()
-
-    # @staticmethod
-    # def extract_elements(elements):
-    #
-    #     # print(f"Extracting elements in thread {id}")
-    #     # elements = self.driver.find_elements_by_xpath(xpath)
-    #     elements_txt = [e.text for e in elements]  # List of followers (username, full name, follow text)
-    #     elements_list = []  # List of followers (usernames only)
-    #
-    #     # Go through each entry in the list, append the username to the followers liusernamesst
-    #     for i in elements_txt:
-    #         username, sep, name = i.partition('\n')
-    #         elements_list.append(username)
-    #
-    #     print(elements_list)
-    #     print("Thead process fifnished")
-    #     # return elements_list
 
     @staticmethod
     def extract_elements(id, q):
