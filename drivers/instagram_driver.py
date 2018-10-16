@@ -1,7 +1,6 @@
 from selenium import webdriver as wd
 from time import sleep
 
-# TODO add configuration file
 
 class InstagramDriver:
 

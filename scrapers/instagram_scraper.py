@@ -4,28 +4,33 @@ from selenium import webdriver as wd
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import asyncio
+import threading
+
+
 import re
 import random
 import time
 import configparser
+from queue import Queue
+from threading import Thread
 
-# TODO poenoti pridobivanje podatkov iz html-ja, probaj naredit da bo čim manj vzdrževanja potrebno
+# TODO poenoti pridobivanje podatkov iz html-ja, probaj naredit da bo čim manj vzdrževanja potrebno, imena v config dat
 # TODO add better exception handling
-# TODO some problems with tags
-# TODO add better system for scraping all likes, try again, add que
 # TODO add maximum amount for post, likes, comments, ...
-# TODO implement some concurent and ques, because extracting takes a long time
-
 # LOADING CONFIGURATION PARAMETERS
 
 config = configparser.ConfigParser()
 config.read("scrapers/scraper_config.ini")
 
+# num_threads = 2
+process_queue = Queue()
+
 # Maybe move to another file
 
 MAX_SCROLL_RETRY = int(config["scraper"]["MAX_SCROLL_RETRY"])
-SCROLL_PAUSE = None
-SCROLL_PAUSE_LINK = None
+SCROLL_PAUSE = float(config["scraper"]["SCROLL_PAUSE"])
+SCROLL_PAUSE_LINK = float(config["scraper"]["SCROLL_PAUSE_LINK"])
 MAX_SCROLL_ELEMENTS = int(config["scraper"]["MAX_SCROLL_ELEMENTS"])
 
 
@@ -38,7 +43,7 @@ class InstagramAccount:
 
         self.account_name = account
         self.driver = driver
-        self.account_id = None  # Can be obtained
+        self.account_id = None  # Can be obtained via html
         self.account_private = False
 
         self.followers = []
@@ -49,50 +54,52 @@ class InstagramAccount:
         self.account_alias = ""
         self.account_bio = ""
 
-        self.SCROLL_PAUSE = .25
-        self.SCROLL_PAUSE_LINK = 2.5
+        self.SCROLL_PAUSE = SCROLL_PAUSE
+        self.SCROLL_PAUSE_LINK = SCROLL_PAUSE_LINK
 
     def load_account(self):
 
         account_url = f"https://www.instagram.com/{self.account_name}/"
-        print(account_url)
 
         # Load account page
+        print(f"Loading {account_url}")
         self.driver.get(account_url)
-
         self.check_if_private()
 
-    def scrape_followers(self, click_link: str, modalbox: str, str_index: int):
+    def check_if_private(self):
+
+        try:
+            if self.driver.find_elements_by_xpath("//*[contains(text(), 'This Account is Private')]"):
+                print(f"Account: {self.account_name} is PRIVATE, cannot access information, quitting!")
+                self.account_private = True
+        except:
+            pass
+
+    def scrape_followers(self, click_link: str, modalbox: str, str_index: int, save_location):
 
         class_name = "g47SY"
         xpath = "/html/body/div[3]/div/div"
         scroll_class = "isgrP"
         scroll_xpath = "/html/body/div[3]/div/div/div[2]/ul/div/li"
 
+        # Extract number of followers
         follow = self.driver.find_elements_by_class_name(class_name)[str_index].text
-
         num_followers = self.extract_number(follow)
 
-        # Click the 'Follower(s)' link
+        # Click the 'Follower(s)' link to load modal
         self.driver.find_element_by_partial_link_text(click_link).click()
 
+        # Wait for the modal to load
         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
 
-        print("Collecting user elements")
-        self.scroll_modal(modalbox, scroll_class, num_followers, scroll_xpath)
+        print("Scrolling and collecting elements")
+        # TODO sproti scrolanje in parsanje
 
-        if click_link == "follower":
-            self.followers = self.extract_elements(elements=self.driver.find_elements_by_xpath(xpath))
-        elif click_link == "following":
-            self.following = self.extract_elements(elements=self.driver.find_elements_by_xpath(xpath))
+        self.scroll_modal(modalbox, scroll_class, num_followers, scroll_xpath, save_location=save_location)
 
-        # exit the modal
+        # exit the modal, but wait little bit before that
+        time.sleep(1)
         self.driver.find_element_by_xpath("/html/body/div[3]/div/div/div[1]/div[2]/button").click()
-
-    @staticmethod
-    def extract_number(followers: str) -> int:
-        # TODO implement less error prone conversion, excepting also formatis in k, m..
-        return int(followers.replace(",", ""))
 
     def scrape_bio(self):
 
@@ -180,7 +187,7 @@ class InstagramAccount:
         scroll_class = "wwxN2 GD3H5 "
         xpath = "/html/body/div[3]/div/div[2]/div/div/div[2]/ul/div/li"
 
-        self.scroll_modal(modalbox, scroll_class, num_elements=num_of_likes, xpath=xpath)
+        self.scroll_modal(modalbox, scroll_class, max_num_elements=num_of_likes, xpath=xpath)
 
         time.sleep(.25)
         likes = self.extract_elements(elements=self.driver.find_elements_by_xpath(xpath))
@@ -240,34 +247,64 @@ class InstagramAccount:
         self.load_account()
 
         if not self.account_private:
-            self.scrape_followers(click_link="follower", modalbox="followersbox", str_index=1)
+            self.scrape_followers(click_link="follower", modalbox="followersbox", str_index=1,
+                                  save_location=self.followers)
             # self.scrape_followers()
 
-            self.scrape_followers(click_link="following", modalbox="followingbox", str_index=2)
+            self.scrape_followers(click_link="following", modalbox="followingbox", str_index=2,
+                                  save_location=self.following)
             # self.scrape_following()
-            self.scrape_bio()
-            self.scrape_post_links()
-            self.scrape_all_posts()
+            # self.scrape_bio()
+            # self.scrape_post_links()
+            # self.scrape_all_posts()
+
+            process_queue.join()
 
         # self.scrape_post()  # za testirat
+
         self.driver.quit()
 
+    # @staticmethod
+    # def extract_elements(elements):
+    #
+    #     # print(f"Extracting elements in thread {id}")
+    #     # elements = self.driver.find_elements_by_xpath(xpath)
+    #     elements_txt = [e.text for e in elements]  # List of followers (username, full name, follow text)
+    #     elements_list = []  # List of followers (usernames only)
+    #
+    #     # Go through each entry in the list, append the username to the followers liusernamesst
+    #     for i in elements_txt:
+    #         username, sep, name = i.partition('\n')
+    #         elements_list.append(username)
+    #
+    #     print(elements_list)
+    #     print("Thead process fifnished")
+    #     # return elements_list
+
     @staticmethod
-    def extract_elements(elements) -> list:
+    def extract_elements(id, q):
+        while True:
+            # Problem is that we leave the modal before we can extract them
+            elements, save_loc = q.get()
 
-        print("Extracting elements")
-        # elements = self.driver.find_elements_by_xpath(xpath)
-        elements_txt = [e.text for e in elements]  # List of followers (username, full name, follow text)
-        elements_list = []  # List of followers (usernames only)
+            print(f"Extracting elements in thread {id}")
+            # print(elements)
+            elements_txt = [e.text for e in elements]
 
-        # Go through each entry in the list, append the username to the followers liusernamesst
-        for i in elements_txt:
-            username, sep, name = i.partition('\n')
-            elements_list.append(username)
+            elements_list = []  # List of followers (usernames only)
 
-        print(elements_list)
+            # Go through each entry in the list, append the username to the followers liusernamesst
+            for i in elements_txt:
+                username, sep, name = i.partition('\n')
+                elements_list.append(username)
 
-        return elements_list
+            print(elements_list)
+            print("Thead process finished")
+
+            # Extend extracted elements to specified array
+            save_loc.extend(elements_list)
+
+            q.task_done()
 
     @staticmethod
     def extract_hashtags(comments: list) -> list:
@@ -283,61 +320,70 @@ class InstagramAccount:
 
         return hashtags
 
-    def scroll_modal(self, modalbox: str, scroll_class: str, num_elements: int, xpath: str):
+    @staticmethod
+    def extract_number(followers: str) -> int:
+        # TODO implement less error prone conversion, excepting also formatis in k, m..
+        return int(followers.replace(",", ""))
 
-        try:
-            self.driver.execute_script(f"{modalbox} = document.getElementsByClassName('{scroll_class}')[0];")
-            last_height = self.driver.execute_script(f"return {modalbox}.scrollHeight;")
-            delta_time = 0
+    def scroll_modal(self, modalbox: str, scroll_class: str, max_num_elements: int, xpath: str, save_location):
 
-            # We need to scroll the modal to ensure that all elements are loaded
+        self.driver.execute_script(f"{modalbox} = document.getElementsByClassName('{scroll_class}')[0];")
+        # last_height = self.driver.execute_script(f"return {modalbox}.scrollHeight;")
+        delta_time = 0
 
-            non_increase = 0
-            relative_dif = 0
+        # Wait for the modal to load
+        time.sleep(0.5)
 
-            while True:
+        # Get intial number of loaded elements
+        current_num_elements = 0
 
-                # This triggers the loading
-                self.driver.execute_script(f"{modalbox}.scrollTo(0, {modalbox}.scrollHeight);")
+        non_increase = 0  # For keeping track how many times we did not load any new elements
 
-                nums1 = len(self.driver.find_elements_by_xpath(xpath))
+        while True:
 
-                # Wait for page to load
-                time.sleep(self.SCROLL_PAUSE + delta_time)
-                # print(f"Time for sleep: {self.SCROLL_PAUSE + delta_time}")
+            # Scrolls the the bottom of the modal and triggers loading of new elements
+            self.driver.execute_script(f"{modalbox}.scrollTo(0, {modalbox}.scrollHeight);")
 
-                nums2 = len(self.driver.find_elements_by_xpath(xpath))
-                print(f"{nums1} -- {nums2} // {num_elements}")
+            # Wait for new scrolled elements to load
+            time.sleep(self.SCROLL_PAUSE + delta_time)
 
-                if nums1 > MAX_SCROLL_ELEMENTS:
+            # WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located((By.XPATH, xpath)))
+
+            new_num_elements = len(self.driver.find_elements_by_xpath(xpath)) - current_num_elements
+            current_num_elements = len(self.driver.find_elements_by_xpath(xpath))
+
+            start_index = current_num_elements - new_num_elements
+            end_index = current_num_elements
+
+            print(f"{start_index} ... {end_index} // {max_num_elements}")
+
+            # print([element.text for element in self.driver.find_elements_by_xpath(xpath)[start_index:end_index-1]])
+
+            print(f"Non increase {non_increase}")
+            print(MAX_SCROLL_RETRY)
+            if current_num_elements > MAX_SCROLL_ELEMENTS:
+                break
+
+            # Check if we got new elements, if not increase the load time
+            if new_num_elements == 0:
+                print("Increasing the time to load elements!")
+                non_increase += 1
+                delta_time += 0.15
+
+                if non_increase > MAX_SCROLL_RETRY:
+                    print("Exceeded the maximum retry amount, quiting")
                     break
-
-                if relative_dif == (num_elements - nums2):
-                    non_increase += 1
-
-                if nums2 == num_elements:
-                    # print("We are at the end")
-                    break
-
-                elif nums1 == nums2:
-                    print("Retrying to load more elements")
-                    delta_time += 0.1
-
-                    if non_increase > MAX_SCROLL_RETRY:
-                        break
-
-                    relative_dif = num_elements - nums2
+                else:
                     continue
 
-        except Exception as e:
+            if current_num_elements == max_num_elements:
+                print("We scraped all elements of the modal... exiting!")
+                break
 
-            print(f"Generated an exception : {e}")
+            # Minus one at the index becuase it takes one more element that it actualy findd and then crashes the scraping
+            # TODO explore more the exact couse of the problem
+            process_queue.put((self.driver.find_elements_by_xpath(xpath)[start_index:end_index - 1], save_location))
 
-    def check_if_private(self):
 
-        try:
-            if self.driver.find_elements_by_xpath("//*[contains(text(), 'This Account is Private')]"):
-                print(f"Account: {self.account_name} is PRIVATE, cannot access information, quitting!")
-                self.account_private = True
-        except:
-            pass
+worker = Thread(target=InstagramAccount.extract_elements, args=(1, process_queue,))
+worker.start()
