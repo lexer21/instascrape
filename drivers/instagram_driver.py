@@ -3,12 +3,10 @@ from time import sleep
 
 
 class InstagramDriver:
-
     chrome_dir = r"/usr/bin/google-chrome"
     chrome_driver_dir = r"/home/leon/Projects/instascrape/chromedriver"
 
     def __init__(self, username: str, password: str):
-
         self.options = wd.ChromeOptions()
         self.options.binary_location = self.chrome_dir
         self.driver = wd.Chrome(self.chrome_driver_dir, chrome_options=self.options)
@@ -19,7 +17,6 @@ class InstagramDriver:
         self.login()
 
     def login(self):
-
         # Load page
         self.driver.get("https://www.instagram.com/accounts/login/")
 
@@ -33,4 +30,4 @@ class InstagramDriver:
         # WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.LINK_TEXT, "Watch All")))
 
         print("Successfuly logged-in!")
-        sleep(2)
+        sleep(1)

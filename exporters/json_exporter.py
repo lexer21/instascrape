@@ -1,21 +1,17 @@
 import json
 
 from scrapers.instagram_scraper import InstagramAccount
-from pprint import pprint
 
 
 class MakeJson:
 
     def __init__(self, account: InstagramAccount):
-
         self.account = account
 
     def export_to_json(self):
-
         post_list = []
 
         for post in self.account.posts:
-
             # Adding src url may be redundant?
             post_dict = {
                 "post_hash": post[0],
@@ -27,7 +23,7 @@ class MakeJson:
 
             post_list.append(post_dict)
 
-        print(self.account.posts)
+        # print(self.account.posts)
 
         user_data = {
             "username": self.account.account_name,
@@ -38,7 +34,7 @@ class MakeJson:
             "posts": post_list
         }
 
-        pprint(user_data)
+        # pprint(user_data)
 
         with open(f"data/json/{self.account.account_name}", 'w') as outfile:
             json.dump(user_data, outfile, sort_keys=True, indent=4)

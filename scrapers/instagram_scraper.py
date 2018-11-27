@@ -1,22 +1,36 @@
 # -*- coding: utf-8 -*-
 
-from selenium import webdriver as wd
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-import asyncio
-import threading
-
-import re
-import random
-import time
 import configparser
+import random
+import re
+import time
+from functools import wraps
 from queue import Queue
 from threading import Thread
+
+from selenium import webdriver as wd
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
 
 # TODO poenoti pridobivanje podatkov iz html-ja, probaj naredit da bo čim manj vzdrževanja potrebno, imena v config dat
 # TODO add better exception handling
 # TODO add maximum amount for post, likes, comments, ...
+# TODO add random scrolling up and down to load followers and following elements, seems like new scraping protection
+
+def timing(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        ts = time.time()
+        result = f(*args, **kw)
+        te = time.time()
+        print('func:%r args:[%r, %r] took: %2.4f sec' % (f.__name__, args, kw, te - ts))
+        return result
+
+    return wrap
+
+
 # LOADING CONFIGURATION PARAMETERS
 
 config = configparser.ConfigParser()
@@ -34,7 +48,6 @@ MAX_SCROLL_ELEMENTS = int(config["scraper"]["MAX_SCROLL_ELEMENTS"])
 
 
 # END OF CONFIGURATION
-
 
 class InstagramAccount:
 
@@ -72,6 +85,7 @@ class InstagramAccount:
                 print(f"Account: {self.account_name} is PRIVATE, cannot access information, quitting!")
                 self.account_private = True
         except:
+            print("Account is public")
             pass
 
     def scrape_followers(self, click_link: str, modalbox: str, str_index: int, save_location):
@@ -92,7 +106,6 @@ class InstagramAccount:
         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
 
         print("Scrolling and collecting elements")
-        # TODO sproti scrolanje in parsanje
 
         self.scroll_modal(modalbox, scroll_class, num_followers, scroll_xpath, save_location)
 
@@ -146,6 +159,7 @@ class InstagramAccount:
             print(f"Scraping post :: {i}")
             self.scrape_post(hash)
 
+    @timing
     def scrape_post(self, post_hash: str):
 
         post_url = f"https://www.instagram.com/p/{post_hash}/?taken-by={self.account_name}"
@@ -164,12 +178,24 @@ class InstagramAccount:
 
         likes = self.scrape_post_likes()
         comments = self.scrape_post_comments()
+
         hashtags = self.extract_hashtags(comments)
         tags = self.extract_tags(comments)
 
         self.posts.append([post_hash, likes, comments, hashtags, tags])
 
-    # TODO rewrite this function to work with queues
+    def anti_scrape(self, modalbox: str, scroll_class: str):
+
+        # self.driver.execute_script(f"{modalbox} = document.getElementsByClassName('{scroll_class}')[0];")
+
+        for i in range(5):
+            print("Scroll up")
+            self.driver.execute_script(f"{modalbox}.scrollTo(0, 0);")
+            time.sleep(1)
+            print("Scroll Down")
+            self.driver.execute_script(f"{modalbox}.scrollTo(0, {modalbox}.scrollHeight/2);")
+
+    @timing
     def scrape_post_likes(self) -> list:
 
         class_name = "zV_Nj"
@@ -188,6 +214,7 @@ class InstagramAccount:
         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
 
         modalbox = "postlikesbox"
+
         likes = []
         self.scroll_modal(modalbox, scroll_class, num_of_likes, scroll_xpath, likes)
 
@@ -200,6 +227,7 @@ class InstagramAccount:
 
         return likes
 
+    @timing
     def scrape_post_comments(self) -> list:
 
         modalbox = "commentsbox"
@@ -211,7 +239,7 @@ class InstagramAccount:
                 time.sleep(1)
                 self.scroll_to_top(modalbox, scroll_class)
             except:
-                print("No more comments found")
+                # print("No more comments found")
                 break
 
         xpath = "//*[@id='react-root']/section/main/div/div/article/div[2]/div[1]/ul/li"
@@ -232,6 +260,7 @@ class InstagramAccount:
         self.driver.execute_script(f"{modalbox}.scrollTo(0, 0);")
 
     @staticmethod
+    @timing
     def extract_tags(comments: list) -> list:
 
         tags = []
@@ -250,15 +279,24 @@ class InstagramAccount:
         self.load_account()
 
         if not self.account_private:
+
+            testvar = 154
             self.scrape_followers(click_link="follower", modalbox="followersbox", str_index=1,
                                   save_location=self.followers)
 
+            import pdb
+            pdb.set_trace()
+
             self.scrape_followers(click_link="following", modalbox="followingbox", str_index=2,
                                   save_location=self.following)
-            self.scrape_bio()
-            self.scrape_post_links()
-            self.scrape_all_posts()
 
+            print(f"Number of unique followers: {len(set(self.followers))}")
+            print(f"Number of unique following: {len(set(self.following))}")
+            #
+            #
+            # self.scrape_bio()
+            # self.scrape_post_links()
+            # self.scrape_all_posts()
 
             # TODO queue does not exit somehow??
             process_queue.join()
@@ -293,6 +331,7 @@ class InstagramAccount:
             q.task_done()
 
     @staticmethod
+    @timing
     def extract_hashtags(comments: list) -> list:
 
         hashtags = []
@@ -315,15 +354,28 @@ class InstagramAccount:
 
         self.driver.execute_script(f"{modalbox} = document.getElementsByClassName('{scroll_class}')[0];")
         # last_height = self.driver.execute_script(f"return {modalbox}.scrollHeight;")
-        delta_time = 0
 
         # Wait for the modal to load
         time.sleep(0.5)
 
-        # Get intial number of loaded elements
-        current_num_elements = 0
+        for i in range(4):
+            self.driver.execute_script(f"{modalbox}.scrollTo(0, {modalbox}.scrollHeight);")
+            time.sleep(2)
+            print("Scrolling")
+            self.driver.execute_script(f"{modalbox}.scrollTo(0, 300);")
+            time.sleep(2)
 
+        time.sleep(3)
+
+        # self.driver.execute_script(f"{modalbox}.scrollTo(0, 0);")
+        # time.sleep(2)
+        # self.driver.execute_script(f"{modalbox}.scrollTo(0, 100);")
+
+        # TODO explain variables
+        delta_time = 0
+        current_num_elements = 0
         non_increase = 0  # For keeping track how many times we did not load any new elements
+        temp = 0
 
         while True:
 
@@ -333,42 +385,49 @@ class InstagramAccount:
             # Wait for new scrolled elements to load
             time.sleep(self.SCROLL_PAUSE + delta_time)
 
-            # WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located((By.XPATH, xpath)))
-
             new_num_elements = len(self.driver.find_elements_by_xpath(xpath)) - current_num_elements
             current_num_elements = len(self.driver.find_elements_by_xpath(xpath))
 
             start_index = current_num_elements - new_num_elements
             end_index = current_num_elements
 
-            print(f"{start_index} ... {end_index} // {max_num_elements}")
-
             # print([element.text for element in self.driver.find_elements_by_xpath(xpath)[start_index:end_index-1]])
 
-            print(f"Non increase {non_increase}")
-            print(MAX_SCROLL_RETRY)
             if current_num_elements > MAX_SCROLL_ELEMENTS:
+                print("Scraped all elements")
                 break
 
             # Check if we got new elements, if not increase the load time
             if new_num_elements == 0:
-                print("Increasing the time to load elements!")
+                # print("Increasing the time to load elements!")
                 non_increase += 1
                 delta_time += 0.15
 
                 if non_increase > MAX_SCROLL_RETRY:
-                    print("Exceeded the maximum retry amount, quiting")
+                    print(f"{start_index} ... {end_index} // {max_num_elements} ...quiting")
+
+                    # Put the last one in
+                    # process_queue.put(
+                    #     (self.driver.find_elements_by_xpath(xpath)[end_index], save_location))
+                    # print("Exceeded the maximum retry amount, quiting")
+
                     break
                 else:
                     continue
 
             if current_num_elements == max_num_elements:
-                print("We scraped all elements of the modal... exiting!")
+                # process_queue.put(
+                #     (self.driver.find_elements_by_xpath(xpath)[end_index], save_location))
+                # print("We scraped all elements of the modal... exiting!")
                 break
 
             # Minus one at the index becuase it takes one more element that it actualy findd and then crashes the scraping
             # TODO explore more the exact couse of the problem
-            process_queue.put((self.driver.find_elements_by_xpath(xpath)[start_index:end_index - 1], save_location))
+            process_queue.put(
+                (self.driver.find_elements_by_xpath(xpath)[start_index - temp:end_index - 1], save_location))
+
+            if temp == 0:
+                temp = 1
 
 
 worker = Thread(target=InstagramAccount.extract_elements, args=(1, process_queue,))
